@@ -1,43 +1,40 @@
-/*----------------------------------------------------------------------*
- * Displays the date and time from an MCP79412 RTC and the              *
- * temperature from an MCP980x every second.                            *
- *                                                                      *
- * Set the date and time by entering the following on the Arduino       *
- * serial monitor:                                                      *
- *    Syear,month,day,hour,minute,second,                               *
- *                                                                      *
- * Where                                                                *
- *    year can be two or four digits,                                   *
- *    month is 1-12,                                                    *
- *    day is 1-31,                                                      *
- *    hour is 0-23, and                                                 *
- *    minute and second are 0-59.                                       *
- *                                                                      *
- * Set the calibration register by entering the following:              *
- *    Cnnn,                                                             *
- *                                                                      *
- * Where nnn can be a positive or negative value, e.g. "c4" or "c-42".  *
- *                                                                      *
- * Entering the final comma delimiter (after "second") will avoid a     *
- * one-second timeout and will allow the RTC to be set more accurately. *
- *                                                                      *
- * No validity checking is done, invalid values or incomplete syntax    *
- * in the input will result in an incorrect RTC setting.                *
- *                                                                      *
- * Jack Christensen 28Aug2013                                           *
- *                                                                      *
- * Tested with Arduino 1.8.5 and an Arduino Uno.                        *
- *                                                                      *
- * This work is licensed under CC BY-SA 4.0,                            *
- * http://creativecommons.org/licenses/by-sa/4.0/                       *
- *----------------------------------------------------------------------*/ 
+// Arduino MCP9800 Library
+// https://github.com/JChristensen/MCP9800
+// Copyright (C) 2014-2025 by Jack Christensen and licensed under
+// GNU GPL v3.0, https://www.gnu.org/licenses/gpl.html
+//
+// Displays the date and time from an MCP7941x RTC and the              
+// temperature from an MCP980x every second.                            
+//                                                                      
+// Set the date and time by entering the following on the Arduino       
+// serial monitor:                                                      
+//    Syear,month,day,hour,minute,second,                               
+//                                                                      
+// Where                                                                
+//    year can be two or four digits,                                   
+//    month is 1-12,                                                    
+//    day is 1-31,                                                      
+//    hour is 0-23, and                                                 
+//    minute and second are 0-59.                                       
+//                                                                      
+// Set the calibration register by entering the following:              
+//    Cnnn,                                                             
+//                                                                      
+// Where nnn can be a positive or negative value, e.g. "c4" or "c-42".  
+//                                                                      
+// Entering the final comma delimiter (after "second") will avoid a     
+// one-second timeout and will allow the RTC to be set more accurately. 
+//                                                                      
+// No validity checking is done, invalid values or incomplete syntax    
+// in the input will result in an incorrect RTC setting.                
  
-#include <MCP79412RTC.h>      // http://github.com/JChristensen/MCP79412RTC
-#include <MCP9800.h>          // http://github.com/JChristensen/MCP9800
-#include <Streaming.h>        // http://arduiniana.org/libraries/streaming/
-#include <Time.h>             // http://playground.arduino.cc/Code/Time
+#include <MCP79412RTC.h>    // https://github.com/JChristensen/MCP79412RTC
+#include <MCP9800.h>        // https://github.com/JChristensen/MCP9800
+#include <Streaming.h>      // https://github.com/janelia-arduino/Streaming
+#include <TimeLib.h>        // https://github.com/PaulStoffregen/Time
 
 MCP9800 mySensor;
+MCP79412RTC myRTC;
 
 void setup()
 {
@@ -46,17 +43,18 @@ void setup()
     Serial.begin(115200);
     delay(1000);
     Serial << F( "\n" __FILE__ " " __DATE__ " " __TIME__ "\n" );
-    mySensor.begin();                        // initialize the temperature sensor
-    mySensor.writeConfig(ADC_RES_12BITS);    // max resolution, 0.0625 °C
+    mySensor.begin();                               // initialize the temperature sensor
+    mySensor.writeConfig(MCP9800::ADC_RES_12BITS);  // max resolution, 0.0625 °C
+    myRTC.begin();
     
     // setSyncProvider() causes the Time library to synchronize with the
     // external RTC by calling RTC.get() every five minutes by default.
-    setSyncProvider(RTC.get);
+    setSyncProvider([](){return myRTC.get();});
     Serial << endl << F("RTC Sync");
     if (timeStatus() != timeSet) Serial << F(" FAIL!");
     Serial << endl;
     
-    RTC.idRead(rtcID);
+    myRTC.idRead(rtcID);
     Serial << F("RTC ID = ");
     for (int i=0; i<8; ++i)
     {
@@ -65,7 +63,7 @@ void setup()
     }
     Serial << endl;
 
-    RTC.getEUI64(rtcID);
+    myRTC.getEUI64(rtcID);
     Serial << F("EUI-64 = ");
     for (int i=0; i<8; ++i)
     {
@@ -74,7 +72,7 @@ void setup()
     }
     Serial << endl;
     
-    Serial << F("Calibration Register = ") << RTC.calibRead() << endl;
+    Serial << F("Calibration Register = ") << myRTC.calibRead() << endl;
 }
 
 void loop()
@@ -107,7 +105,7 @@ void loop()
                         tm.Minute = Serial.parseInt();
                         tm.Second = Serial.parseInt();
                         time_t t = makeTime(tm);
-                        RTC.set(t);        // use the time_t value to ensure correct weekday is set
+                        myRTC.set(t);   // use the time_t value to ensure correct weekday is set
                         setTime(t);        
                         Serial << F("RTC set to: ");
                         printDateTime(t);
@@ -120,9 +118,9 @@ void loop()
             case 'c':
                 {
                     int newCal = Serial.parseInt();
-                    int oldCal = RTC.calibRead();
-                    RTC.calibWrite(newCal);
-                    Serial << F("Calibration changed from ") << oldCal << F(" to ") << RTC.calibRead() << endl;
+                    int oldCal = myRTC.calibRead();
+                    myRTC.calibWrite(newCal);
+                    Serial << F("Calibration changed from ") << oldCal << F(" to ") << myRTC.calibRead() << endl;
                 }
                 break;
                 
@@ -139,8 +137,8 @@ void loop()
     time_t t = now();
     if (t != tLast) {
         tLast = t;
-        float C = mySensor.readTempC16(AMBIENT) / 16.0;
-        float F = mySensor.readTempF10(AMBIENT) / 10.0;
+        float C = mySensor.readTempC16(MCP9800::AMBIENT) / 16.0;
+        float F = mySensor.readTempF10(MCP9800::AMBIENT) / 10.0;
         printDateTime(t);
         Serial << C << F("C ") << F << 'F' << endl;
     }

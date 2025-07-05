@@ -23,6 +23,7 @@ writeConfig	KEYWORD2
 # Constants (LITERAL1)
 #######################################
 
+BASE_ADDR	LITERAL1
 AMBIENT	LITERAL1
 CONFIG_REG	LITERAL1
 HYSTERESIS	LITERAL1
