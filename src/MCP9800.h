@@ -41,9 +41,12 @@ class MCP9800
         MCP9800(TwoWire& tw) : m_devAddr{BASE_ADDR}, wire{tw} {}
 
         void begin();
+        void begin(uint8_t config);
         int readTempC16(MCP9800_REGS_t reg);
         int readTempF10(MCP9800_REGS_t reg);
         void writeTempC2(MCP9800_REGS_t reg, const int value);
+        void startOneShot();
+        bool oneShotComplete();
         uint8_t readConfig();
         void writeConfig(const uint8_t value);
 

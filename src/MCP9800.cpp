@@ -13,6 +13,13 @@ void MCP9800::begin()
     wire.begin();
 }
 
+// supply an optional config register setting.
+void MCP9800::begin(uint8_t config)
+{
+    wire.begin();
+    writeConfig(config);
+}
+
 // read one of the sensor's three temperature registers.
 // returns the temperature as an integer which is °C times 16.
 int MCP9800::readTempC16(MCP9800_REGS_t reg)
@@ -52,6 +59,22 @@ void MCP9800::writeTempC2(MCP9800_REGS_t reg, const int value)
     }
 }
 
+// start a one-shot conversion. device must be in
+// shutdown mode before calling this function.
+void MCP9800::startOneShot()
+{
+    // read the config register so we can preserve other settings
+    uint8_t cfg = readConfig();
+    writeConfig(cfg | (ONE_SHOT + SHUTDOWN));
+}
+
+// check the one-shot bit in the config register to
+// see if conversion is complete.
+bool MCP9800::oneShotComplete()
+{
+    return !(readConfig() & ONE_SHOT);
+}
+
 // read the sensor's configuration register
 uint8_t MCP9800::readConfig()
 {
@@ -60,7 +83,7 @@ uint8_t MCP9800::readConfig()
     wire.endTransmission();
 
     wire.requestFrom(m_devAddr, (uint8_t)1);
-    return Wire.read();
+    return wire.read();
 }
 
 // write the sensor's configuration register

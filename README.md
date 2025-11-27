@@ -1,8 +1,8 @@
 # Arduino MCP9800 Temperature Sensor Library
 https://github.com/JChristensen/MCP9800  
 README file  
-Jack Christensen
-Jul 2025
+Jack Christensen  
+Nov 2025
 
 ## License
 Arduino MCP9800 Library Copyright (C) 2014-2025 by Jack Christensen GNU GPL v3.0
@@ -24,8 +24,6 @@ When writing the Hysteresis and Limit-Set registers, the value must be given as 
 
 Bit masks for the control register are provided in the **MCP9800.h** file.     
 
-"Arduino Library for Microchip MCP9800/1/2/3" by Jack Christensen is licensed under [CC BY-SA 4.0](http://creativecommons.org/licenses/by-sa/4.0/).
-
 
 ## Examples
 The following example sketch is included with the **MCP9800** library:
@@ -35,6 +33,8 @@ The following example sketch is included with the **MCP9800** library:
 - **MCP9800_RTC:** Displays the date and time from an MCP7941x RTC and the temperature from an MCP980x  
 
 - **pico_ex1:** Like MCP9800_EX1, but for Raspberry Pi Pico with the sensor on the I2C-1 (Wire1) bus.  
+
+- **oneshot:** Demonstrates one-shot temperature measurement.
 
 ## Enumeration
 
@@ -78,6 +78,20 @@ None.
 ```c++
 MCP9800 mySensor;
 mySensor.begin();
+```
+### begin(config)
+##### Description
+Initializes the library and sets the sensor's configuration register.
+##### Syntax
+`mySensor.begin(uint8_t config);`
+##### Parameters
+None.
+##### Returns
+None.
+##### Example
+```c++
+MCP9800 mySensor;
+mySensor.begin(MCP9800::ADC_RES_12BITS);  // maximum resolution
 ```
 ### readTempC16(MCP9800_REGS_t reg)
 ##### Description
@@ -159,4 +173,35 @@ mySensor.begin();
 //set ADC resolution to 12 bits and the fault queue length to 6
 byte config = MCP9800::ADC_RES_12BITS | MCP9800::FAULT_QUEUE_6;
 mySensor.writeConfig(config);
+```
+### startOneShot()
+##### Description
+Begins a temperature conversion in one-shot mode. This mode can greatly reduce the current used by the sensor. The sensor must be in Shutdown mode before beginning a one-shot conversion. Further, the caller must wait until the conversion completes to read the temperature. The `oneShotComplete()` function can be used to determine if a conversion is complete. Note that the sensor's ADC takes more time to complete a conversion as resolution increases; see the datasheet for specifics.
+##### Syntax
+`mySensor.startOneShot();`
+##### Parameters
+None.
+##### Returns
+None.
+##### Example
+```c++
+MCP9800 mySensor;
+mySensor.begin(MCP9800::SHUTDOWN);
+mySensor.startOneShot();
+```
+### oneShotComplete()
+##### Description
+When using one-shot mode (see above, and also the datasheet), this function checks the sensor's config register and returns true if conversion has completed, else it returns false.
+##### Syntax
+`mySensor.oneShotComplete();`
+##### Parameters
+None.
+##### Returns
+Conversion completion status *(bool)*.
+##### Example
+```c++
+do {
+    delay(100);
+} while (!mySensor.oneShotComplete());
+int c16 = mySensor.readTempC16(MCP9800::AMBIENT);
 ```
